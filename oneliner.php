@@ -2,23 +2,6 @@
 
 $limit = 100;
 
-if (!function_exists('fputcsv')) {
-function fputcsv($fh, $arr)
-{
-  $csv = "";
-  while (list($key, $val) = each($arr))
-  {
-    $val = str_replace('"', '""', $val);
-    $csv .= '"'.$val.'",';
-  }
-  $csv = substr($csv, 0, -1);
-  $csv .= "\n";
-  if (!@fwrite($fh, $csv))
-    return FALSE;
-}
-$php5 = 0;
-}
-
 function read_data () {
   $res = array();
   if (($handle = fopen('oneliner.csv', 'r')) !== FALSE) {
@@ -36,45 +19,53 @@ function write_data($data) {
   fclose($fp);
 }
 
-function handle_post_data() {
-  if (array_key_exists('submit', $_POST)) {
-    $pseudo  = stripslashes($_POST['pseudo']);
-    $message = stripslashes($_POST['message']);
-    $time    = time();
-    write_data(array($time, $pseudo, $message));
-  }
+if (array_key_exists('submit', $_POST)) {
+	$pseudo  = stripslashes($_POST['pseudo']);
+	$message = stripslashes($_POST['message']);
+	$time    = time();
+	write_data(array($time, $pseudo, $message));
 }
-
-handle_post_data();
 
 $d = read_data();
 $rev_d = array_reverse ($d);
 ?>
-
 <html>
 <head>
     <title>Oneliner</title>
 
     <style type="text/css">
+        body { 
+            background-color: #fffebe;
+            font-family: "Comic Sans MS", "Comic Sans", cursive, Verdana, Arial, Helvetica, sans-serif;
+            color: black;
+            text-decoration: none;
+        }
+        
+        form {
+            border : 1px dotted black;
+            background-color: #efeeae;
+            border-radius: 10px;
+            margin:2%;
+        }
+        
         input {
-            font-family: Verdana, Arial, Helvetica, sans-serif;
-            font-size: 11px;
+            font-size: 120%;
             color: #000000;
-            border-width: 1px;
-            border-style: solid;
-            border-color: #000000;
+            padding: 0.5%;
+            margin: 1%;
+            border-radius: 5px;
+		}
+			
+		input.text {
+            text-indent: 0.5em;
+            border: 1px solid black;
             background-color: #fffebe;
         }
 
-        BODY { 
-            background-color: #fffebe;
-            scrollbar-face-color: #fffebe;
-            scrollbar-shadow-color: #CCCCCC;
-            scrollbar-3dlight-color: #fffebe;
-            scrollbar-track-color: #fffebe;
-            scrollbar-arrow-color:#CCCCCC;
-            font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 11px; color: #000000; text-decoration: none 
-        }
+		#message {
+			width:90%;
+			display: block;
+		}
 
         .pseudo {
             color: #FF6600
@@ -83,18 +74,21 @@ $rev_d = array_reverse ($d);
         .pseudobracket {
             color: #7DBFF1
         }
+        
+        li {
+            list-style : none;
+            margin-top 1em;
+        }
     </style>
 </head>
 <body>
 
-    <a href="?chuck_norris">
-        <img style="border:none" src="oneliner.jpg" height="40" />
-    </a>
+    <img src="oneliner.jpg" />
 
     <form method="post">
-        <input type="text" size="8" maxlength="15" name="pseudo" value="pseudo" onclick="this.value=''" />
-        <input type="text" size="25" name="message" value="message-pourri" onclick="this.value=''" />
-        <input type="submit" name="submit" value="+" />
+        <input type="text" class="text" size="25" id="message" name="message" value="Message" onclick="if(this.value=='Message') this.value=''" />
+        <input type="text" class="text" size="10" maxlength="16" name="pseudo" value="Anonymous" onclick="if(this.value=='Anonymous') this.value=''" />
+        <input type="submit" name="submit" value="Write" />
     </form>
     
     <ul>
