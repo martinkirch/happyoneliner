@@ -1,6 +1,8 @@
 <?php
 
 $limit = 100;
+$maxsize = 5242880; // 5*1024*1024
+$flash_message = "";
 
 function read_data () {
   $res = array();
@@ -19,11 +21,32 @@ function write_data($data) {
   fclose($fp);
 }
 
+function get_unique_filename_for($attachment) {
+    $extension = substr($attachment['name'],-4);
+    $name = md5($attachment['tmp_name']) . $extension;
+    while (file_exists($name)) {
+        $name = md5($name) . $extension;
+    }
+    return $name;
+}
+
 if (array_key_exists('submit', $_POST)) {
 	$pseudo  = stripslashes($_POST['pseudo']);
 	$message = stripslashes($_POST['message']);
 	$time    = time();
-	write_data(array($time, $pseudo, $message));
+	$file    = "";
+	if (array_key_exists('attachment', $_FILES)) {
+	    $attachment = $_FILES['attachment'];
+	    if ($attachment['error'] == 0 || $attachment['size'] > $maxsize) {
+	        $file = get_unique_filename_for($attachment);
+	        if(!move_uploaded_file($attachment['tmp_name'], $file)) {
+    	        $flash_message = "Ooops. file upload failed.";
+    	    }
+	    } else {
+	        $flash_message = "Ooops. file upload failed or file is too big.";
+	    }
+	}
+	write_data(array($time, $pseudo, $message, $file));
 }
 
 $d = read_data();
@@ -32,61 +55,20 @@ $rev_d = array_reverse ($d);
 <html>
 <head>
     <title>Oneliner</title>
-
-    <style type="text/css">
-        body { 
-            background-color: #fffebe;
-            font-family: "Comic Sans MS", "Comic Sans", cursive, Verdana, Arial, Helvetica, sans-serif;
-            color: black;
-            text-decoration: none;
-        }
-        
-        form {
-            border : 1px dotted black;
-            background-color: #efeeae;
-            border-radius: 10px;
-            margin:2%;
-        }
-        
-        input {
-            font-size: 120%;
-            color: #000000;
-            padding: 0.5%;
-            margin: 1%;
-            border-radius: 5px;
-		}
-			
-		input.text {
-            text-indent: 0.5em;
-            border: 1px solid black;
-            background-color: #fffebe;
-        }
-
-		#message {
-			width:90%;
-			display: block;
-		}
-
-        .pseudo {
-            color: #FF6600
-        }
-
-        .pseudobracket {
-            color: #7DBFF1
-        }
-        
-        li {
-            list-style : none;
-            margin-top 1em;
-        }
-    </style>
+    <link rel="stylesheet" href="oneliner.css" type="text/css" media="screen" charset="utf-8">
 </head>
 <body>
 
     <img src="oneliner.jpg" />
+    
+    <?php if (!empty($flash_message)) echo "<p>$message</p>\n" ?>
 
-    <form method="post">
+    <form action="" method="post" enctype="multipart/form-data">
         <input type="text" class="text" size="25" id="message" name="message" value="Message" onclick="if(this.value=='Message') this.value=''" />
+        <span id="attachmentForm">
+            <label for="attachment">Attach file :</label>
+            <input type="file" name="attachment" id="attachment" />
+        </span>
         <input type="text" class="text" size="10" maxlength="16" name="pseudo" value="Anonymous" onclick="if(this.value=='Anonymous') this.value=''" />
         <input type="submit" name="submit" value="Write" />
     </form>
@@ -102,8 +84,16 @@ foreach ($rev_d as $line) {
         }
     }
     
+    $time = date('d M Y H:i', $line[0]);
+    
+    $img = "";
+    if (!empty($line[3])) {
+        $img = "<img src='{$line[3]}' class='attachment' />";
+    }
+    
     echo <<<END
-        <li>
+        <li> $img
+            <span class="time">$time</span>
             <span class="pseudobracket">[</span>
             <span class="pseudo">{$line[1]}</span>
             <span class="pseudobracket">]</span>
