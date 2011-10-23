@@ -1,56 +1,60 @@
 <?php
 
-$limit = 100;
-$maxsize = 5242880; // 5*1024*1024
-$flash_message = "";
+$limit = 5;
+$maxsize = 5242880; // 5*1024*1024 - attachment max in byets
+$messageMaxLength = 2000;
+$flash_message = '';
+$dataFilename = 'oneliner.csv';
 
-function read_data () {
-  $res = array();
-  if (($handle = fopen('oneliner.csv', 'r')) !== FALSE) {
-    while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
-      $res []= $data;
+$data = array();
+if (($handle = fopen($dataFilename, 'r')) !== FALSE) {
+    $lineLength = $messageMaxLength + 100;
+    while (($line = fgetcsv($handle, $lineLength, ',')) !== FALSE) {
+      $data[] = $line;
     }
     fclose($handle);
-  }
-  return $res;
-}
-
-function write_data($data) {
-  $fp = fopen('oneliner.csv', 'a+');
-  fputcsv($fp, $data);
-  fclose($fp);
 }
 
 function get_unique_filename_for($attachment) {
     $extension = substr($attachment['name'],-4);
-    $name = md5($attachment['tmp_name']) . $extension;
+    $name = 'oneliner_' . md5($attachment['tmp_name']) . $extension;
     while (file_exists($name)) {
-        $name = md5($name) . $extension;
+        $name = 'oneliner_' . md5($name) . $extension;
     }
     return $name;
 }
 
 if (array_key_exists('submit', $_POST)) {
-	$pseudo  = stripslashes($_POST['pseudo']);
-	$message = stripslashes($_POST['message']);
+	$pseudo  = substr(stripslashes($_POST['pseudo']),0,16);
+	$message = substr(stripslashes($_POST['message']),0,$messageMaxLength);
 	$time    = time();
 	$file    = "";
+	
 	if (array_key_exists('attachment', $_FILES)) {
 	    $attachment = $_FILES['attachment'];
-	    if ($attachment['error'] == 0 || $attachment['size'] > $maxsize) {
+	    if ($attachment['error'] == 0 && $attachment['size'] < $maxsize) {
 	        $file = get_unique_filename_for($attachment);
 	        if(!move_uploaded_file($attachment['tmp_name'], $file)) {
-    	        $flash_message = "Ooops. file upload failed.";
+    	        $flash_message = 'Ooops. File upload failed.';
     	    }
-	    } else {
-	        $flash_message = "Ooops. file upload failed or file is too big.";
 	    }
 	}
-	write_data(array($time, $pseudo, $message, $file));
+	array_unshift($data, array($time, $pseudo, $message, $file));
+	
+	while (count($data) > $limit) {
+	    $last = array_pop($data);
+	    if (!empty($last[3]))
+	        unlink($last[3]);
+	}
+	
+    $fp = fopen($dataFilename, 'w');
+    foreach ($data as $line)
+    {
+        fputcsv($fp, $line);
+    }
+    fclose($fp);
 }
 
-$d = read_data();
-$rev_d = array_reverse ($d);
 ?>
 <html>
 <head>
@@ -58,32 +62,23 @@ $rev_d = array_reverse ($d);
     <link rel="stylesheet" href="oneliner.css" type="text/css" media="screen" charset="utf-8">
 </head>
 <body>
-
-    <img src="oneliner.jpg" />
-    
-    <?php if (!empty($flash_message)) echo "<p>$message</p>\n" ?>
+<div id="container">    
+    <?php if (!empty($flash_message)) echo "<p>$flash_message</p>\n" ?>
 
     <form action="" method="post" enctype="multipart/form-data">
-        <input type="text" class="text" size="25" id="message" name="message" value="Message" onclick="if(this.value=='Message') this.value=''" />
+        <input type="text" class="text" maxlength="<?php echo $messageMaxLength ?>" id="message" name="message" value="Message" onclick="if(this.value=='Message') this.value=''" />
+        <input type="text" class="text" size="10" maxlength="16" name="pseudo" value="Anonymous" onclick="if(this.value=='Anonymous') this.value=''" />
+        <input type="submit" name="submit" value="Write" />
         <span id="attachmentForm">
             <label for="attachment">Attach file :</label>
             <input type="file" name="attachment" id="attachment" />
         </span>
-        <input type="text" class="text" size="10" maxlength="16" name="pseudo" value="Anonymous" onclick="if(this.value=='Anonymous') this.value=''" />
-        <input type="submit" name="submit" value="Write" />
     </form>
     
     <ul>
 <?php
 $displayed = 0;
-foreach ($rev_d as $line) {
-    if ($limit >= 0) {
-        $displayed++;
-        if ($displayed > $limit) {
-            break;
-        }
-    }
-    
+foreach ($data as $line) {
     $time = date('d M Y H:i', $line[0]);
     
     $img = "";
@@ -103,5 +98,6 @@ END;
 }
 ?>
     </ul>
+</div>
 </body>
 </html>
