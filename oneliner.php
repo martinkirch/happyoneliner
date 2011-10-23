@@ -1,6 +1,6 @@
 <?php
 
-$limit = 5;
+$limit = 100;
 $maxsize = 5242880; // 5*1024*1024 - attachment max in byets
 $messageMaxLength = 2000;
 $flash_message = '';
